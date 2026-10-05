@@ -1,0 +1,139 @@
+name: Supply chain and infrastructure scans
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "07 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dependencies:
+    name: npm dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Audit dependencies
+        run: |
+          mkdir -p reports
+          npm audit --json > reports/npm-audit.json || test -s reports/npm-audit.json
+          node -e "const report = require('./reports/npm-audit.json'); if (!report.metadata?.vulnerabilities) process.exit(1)"
+
+      - name: Upload npm audit report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: npm-audit-report
+          path: reports/npm-audit.json
+          if-no-files-found: warn
+
+  gitleaks:
+    name: Scan git history with Gitleaks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out full history
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        run: |
+          docker run --rm \
+            -v "$PWD:/repo" \
+            zricethezav/gitleaks:v8.28.0 \
+            git /repo --redact --report-format json \
+            --report-path /repo/gitleaks-report.json --exit-code 0
+
+      - name: Upload Gitleaks report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: gitleaks-report
+          path: gitleaks-report.json
+          if-no-files-found: warn
+
+  trivy:
+    name: Scan files and application image with Trivy
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Scan repository filesystem
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,misconfig,secret
+          format: json
+          output: trivy-filesystem.json
+          exit-code: "0"
+          ignore-unfixed: false
+
+      - name: Build training app image
+        run: docker build --tag appsec-training-lab:latest .
+
+      - name: Scan application image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: appsec-training-lab:latest
+          scanners: vuln,misconfig,secret
+          format: json
+          output: trivy-image.json
+          exit-code: "0"
+          ignore-unfixed: false
+
+      - name: Upload Trivy reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: trivy-reports
+          path: |
+            trivy-filesystem.json
+            trivy-image.json
+          if-no-files-found: warn
+
+  checkov:
+    name: Scan infrastructure with Checkov
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Run Checkov
+        run: |
+          mkdir -p reports
+          docker run --rm \
+            -v "$PWD:/repo" \
+            bridgecrew/checkov:3.3.23 \
+            --directory /repo --framework all --output json \
+            --output-file-path /repo/reports --soft-fail
+
+      - name: Upload Checkov report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: checkov-report
+          path: reports/results_json.json
+          if-no-files-found: warn

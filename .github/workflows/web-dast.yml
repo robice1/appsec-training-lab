@@ -1,0 +1,71 @@
+name: Web application DAST
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "29 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  zap:
+    name: OWASP ZAP baseline scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Start isolated training app
+        run: docker compose up --build --detach --wait
+
+      - name: Scan local app with ZAP
+        uses: zaproxy/action-baseline@v0.15.0
+        with:
+          target: http://127.0.0.1:3000
+          cmd_options: "-I -m 3"
+          fail_action: false
+          allow_issue_writing: false
+          artifact_name: zap-baseline-report
+
+      - name: Stop training app
+        if: always()
+        run: docker compose down --volumes
+
+  nuclei:
+    name: Nuclei safe-template scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Start isolated training app
+        run: docker compose up --build --detach --wait
+
+      - name: Scan only the local training app
+        run: |
+          docker run --rm --network host \
+            -v "$PWD:/work" -w /work \
+            projectdiscovery/nuclei:latest \
+            -u http://127.0.0.1:3000 \
+            -tags misconfig,exposure \
+            -no-interactsh -rl 5 -c 2 -timeout 5 \
+            -jsonl-export nuclei-report.json
+
+      - name: Upload Nuclei report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nuclei-report
+          path: nuclei-report.json
+          if-no-files-found: warn
+
+      - name: Stop training app
+        if: always()
+        run: docker compose down --volumes

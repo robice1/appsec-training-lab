@@ -62,3 +62,16 @@ The app uses only local services included in the Compose file. There are no real
 ## Scanner practice
 
 Point authorized local scans at `http://localhost:3000`. For tools that scan container images, build the `appsec-training-lab` image locally with Compose. The repository intentionally includes multiple source-level and runtime findings; discovery depends on scanner configuration, scope, and rules.
+
+### GitHub Actions scanners
+
+The workflows under `.github/workflows/` run on pushes and pull requests to `main`, weekly, and on demand:
+
+| Workflow | Scanners and scope |
+| --- | --- |
+| `codeql.yml` | CodeQL security and quality queries for TypeScript |
+| `semgrep.yml` | Semgrep default and OWASP Top 10 rules |
+| `supply-chain.yml` | npm dependency audit, Gitleaks history scan, Trivy filesystem/image scans, and Checkov infrastructure/secrets checks |
+| `web-dast.yml` | OWASP ZAP baseline and Nuclei misconfiguration/exposure templates against the local Compose app |
+
+Intentional findings are not configured as CI blockers: scan steps preserve reports for review rather than failing merely because the training app is vulnerable. Actual scanner execution errors still fail their jobs. Reports are uploaded as workflow artifacts; CodeQL upload to GitHub code scanning is disabled so private-repository licensing is not required. The DAST workflows start and tear down their own disposable Compose stack, and Nuclei is restricted to misconfiguration/exposure tags with Interactsh disabled. The web scanners target only the local lab application, not external hosts.
