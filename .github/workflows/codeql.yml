@@ -32,7 +32,7 @@ jobs:
         uses: github/codeql-action/init@v4
         with:
           languages: javascript-typescript
-          build-mode: manual
+          build-mode: none
           queries: security-extended,security-and-quality
 
       - name: Install dependencies
