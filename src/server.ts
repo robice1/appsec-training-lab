@@ -1,7 +1,7 @@
 import express, { NextFunction, Request, Response } from "express";
 import session from "express-session";
 import multer from "multer";
-import { exec } from "node:child_process";
+import { execFile } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { Pool } from "pg";
@@ -158,8 +158,7 @@ app.post("/comments", async (req, res, next) => {
 
 app.get("/api/diagnostics", (req, res) => {
   const message = String(req.query.message ?? "training lab");
-  // Command injection training target: the query value reaches a shell command.
-  exec(`echo ${message}`, { timeout: 3000, maxBuffer: 64 * 1024 }, (error, stdout, stderr) => {
+  execFile("echo", [message], { timeout: 3000, maxBuffer: 64 * 1024 }, (error, stdout, stderr) => {
     if (error) {
       res.status(400).json({ error: error.message, stderr });
       return;
