@@ -1,0 +1,4 @@
+<%- include("header", { title: "Article search" }) %>
+<section class="page-heading"><p class="eyebrow">SQL INJECTION DEMO</p><h1>Search results</h1><p>Query: <code><%= term %></code></p></section>
+<section class="card"><% if (articles.length) { %><ul class="compact"><% articles.forEach((article) => { %><li><strong><%= article.title %></strong><span><%= article.body %></span></li><% }) %></ul><% } else { %><p>No matching articles.</p><% } %><a class="text-link" href="/">← Back to dashboard</a></section>
+<%- include("footer") %>

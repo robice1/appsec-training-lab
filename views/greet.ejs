@@ -1,0 +1,3 @@
+<%- include("header", { title: "Greeting" }) %>
+<section class="page-heading"><p class="eyebrow">REFLECTED XSS DEMO</p><h1>Hello, <%- name %>.</h1><p>The name is deliberately rendered without HTML escaping.</p><a class="text-link" href="/">← Back to dashboard</a></section>
+<%- include("footer") %>

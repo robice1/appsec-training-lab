@@ -1,0 +1,7 @@
+<%- include("header", { title: "Admin area" }) %>
+<section class="page-heading"><p class="eyebrow">BROKEN ACCESS CONTROL DEMO</p><h1>Admin area</h1><p>This page is accessible without authentication or an admin role. It exposes the lab's user and document records.</p></section>
+<section class="bottom-grid">
+  <article class="card"><h2>Sample accounts</h2><ul class="compact"><% users.forEach((user) => { %><li><strong><%= user.username %></strong><span>Role: <%= user.role %> · Account ID: <%= user.id %></span></li><% }) %></ul></article>
+  <article class="card"><h2>All documents</h2><ul class="compact"><% documents.forEach((document) => { %><li><a href="/api/documents/<%= document.id %>"><%= document.title %></a><span>Owner: <%= document.owner %></span></li><% }) %></ul></article>
+</section>
+<%- include("footer") %>

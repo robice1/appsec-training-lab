@@ -1,0 +1,7 @@
+<%- include("header", { title: "Comments" }) %>
+<section class="page-heading"><p class="eyebrow">STORED XSS DEMO</p><h1>Community comments</h1><p>Submitted comment bodies are stored and later rendered as raw HTML.</p></section>
+<section class="bottom-grid">
+  <article class="card"><h2>Leave a comment</h2><form action="/comments" method="post" class="stack"><label for="author">Display name</label><input id="author" name="author" placeholder="guest" maxlength="80"><label for="body">Comment (HTML is intentionally not filtered)</label><textarea id="body" name="body" rows="5" required></textarea><button>Post comment</button></form></article>
+  <article class="card"><h2>Comments</h2><% if (comments.length) { %><ul class="compact"><% comments.forEach((comment) => { %><li><strong><%= comment.author %></strong><span><%- comment.body %></span><small><%= comment.created_at %></small></li><% }) %></ul><% } else { %><p class="muted">No comments yet.</p><% } %></article>
+</section>
+<%- include("footer") %>

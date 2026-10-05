@@ -1,0 +1,58 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: vulnapp
+      POSTGRES_USER: vulnapp
+      POSTGRES_PASSWORD: vulnapp
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vulnapp -d vulnapp"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - training
+
+  app:
+    build: .
+    environment:
+      PORT: "3000"
+      DATABASE_URL: postgres://vulnapp:vulnapp@db:5432/vulnapp
+      SESSION_SECRET: training-only-secret
+      NODE_ENV: development
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    volumes:
+      - uploads:/app/uploads
+    networks:
+      - training
+
+  gateway:
+    image: nginx:alpine
+    ports:
+      - "127.0.0.1:3000:80"
+    depends_on:
+      app:
+        condition: service_healthy
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - ingress
+      - training
+
+volumes:
+  postgres-data:
+  uploads:
+
+networks:
+  ingress:
+  training:
+    internal: true
